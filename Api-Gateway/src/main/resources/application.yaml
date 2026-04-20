@@ -1,24 +1,75 @@
 server:
-  port: 8080
+    port: 8080
 
 spring:
   application:
-    name: api-gateway
-
+        name: api-gateway
   cloud:
     gateway:
+      globalcors:
+          add-to-simple-url-handler-mapping: true
+          corsConfigurations:
+                '[/**]':
+                  allowedOrigins: "*"
+                  allowedMethods:
+                    - GET
+                    - POST
+                    - PUT
+                    - DELETE
+                    - OPTIONS
+                  allowedHeaders: "*"
       routes:
+
+        # ✅ Swagger API Docs (HIGHEST PRIORITY)
+        - id: auth-api-docs
+          uri: lb://AUTH-SERVICE
+          order: -1
+          predicates:
+            - Path=/auth/v3/api-docs/**
+          filters:
+            - RewritePath=/auth/v3/api-docs(?<segment>/?.*), /v3/api-docs${segment}
+
+        # ✅ Swagger UI
+        - id: swagger-config
+          uri: lb://AUTH-SERVICE
+          order: -1
+          predicates:
+            - Path=/auth/swagger-ui/**
+          filters:
+            - RewritePath=/auth/swagger-ui/(?<segment>.*), /swagger-ui/${segment}
+
+        - id: oauth-start
+          uri: lb://AUTH-SERVICE
+          order: -2
+          predicates:
+            - Path=/auth/oauth2/**
+          filters:
+            - RewritePath=/auth/oauth2/(?<segment>.*), /oauth2/${segment}
+
+        # 🔥 OAuth CALLBACK (CRITICAL)
+        - id: oauth-callback
+          uri: lb://AUTH-SERVICE
+          order: -2
+          predicates:
+          - Path=/auth/login/oauth2/**
+          filters:
+          - RewritePath=/auth/login/oauth2/(?<segment>.*), /login/oauth2/${segment}					 
+
+        # ✅ Normal APIs (LOW PRIORITY)
         - id: auth-service
           uri: lb://AUTH-SERVICE
+          order: 0
           predicates:
             - Path=/auth/**
-
-        - id: profile-service
-          uri: lb://PROFILE-SERVICE
-          predicates:
-            - Path=/profile/**
-
+springdoc:
+  swagger-ui:
+    urls:
+      - name: Auth Service
+        url: /auth/v3/api-docs
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
 eureka:
-  client:
-    service-url:
-      defaultZone: http://localhost:8761/eureka
+    client:
+        service-url:
+            defaultZone: http://localhost:8761/eureka
