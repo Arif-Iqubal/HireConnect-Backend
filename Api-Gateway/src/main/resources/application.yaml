@@ -60,12 +60,40 @@ spring:
           uri: lb://AUTH-SERVICE
           order: 0
           predicates:
-            - Path=/auth/**
+            - Path=/auth/**	
+
+       
+
+        # ✅ Profile API Docs
+        - id: profile-api-docs
+          uri: lb://PROFILE-SERVICE
+          order: -1
+          predicates:
+              - Path=/profile/v3/api-docs/**
+          filters:
+              - RewritePath=/profile/v3/api-docs(?<segment>/?.*), /v3/api-docs${segment}
+
+        # ✅ Profile Swagger UI
+        - id: profile-swagger
+          uri: lb://PROFILE-SERVICE
+          order: -1
+          predicates:
+             - Path=/profile/swagger-ui/**
+          filters:
+          - RewritePath=/profile/swagger-ui/(?<segment>.*), /swagger-ui/${segment}
+
+        # Profile Service Routing
+        - id: profile-service
+          uri: lb://PROFILE-SERVICE
+          predicates:
+            - Path=/profile/**
 springdoc:
   swagger-ui:
     urls:
       - name: Auth Service
         url: /auth/v3/api-docs
+      - name: Profile Service
+        url: /profile/v3/api-docs
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
