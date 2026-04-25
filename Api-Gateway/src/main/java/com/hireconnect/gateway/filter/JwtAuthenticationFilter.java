@@ -22,7 +22,8 @@ public class JwtAuthenticationFilter implements GlobalFilter {
 
 		// ✅ PUBLIC ENDPOINTS (VERY IMPORTANT)
 		if (path.startsWith("/auth/login") || path.startsWith("/auth/register") || path.contains("/swagger-ui")
-				|| path.contains("/v3/api-docs") || path.contains("/oauth2") || path.contains("/login/oauth2")) {
+				|| path.contains("/v3/api-docs") || path.startsWith("/job") ||          // ✅ ADD THIS
+			    path.startsWith("/profile") ||  path.contains("/oauth2") || path.contains("/login/oauth2")) {
 
 			return chain.filter(exchange);
 		}
