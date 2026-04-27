@@ -90,6 +90,25 @@ public class GatewayRoutesConfig {
                         .filters(f -> f.rewritePath("/application/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
                         .uri("lb://APPLICATION-SERVICE")
                 )
+                
+                // ================= INTERVIEW SERVICE =================
+                .route("interview-service", r -> r
+                        .path("/interview/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://INTERVIEW-SERVICE")
+                )
+
+                .route("interview-api-docs", r -> r
+                	    .path("/interview/v3/api-docs", "/interview/v3/api-docs/**")
+                	    .filters(f -> f.rewritePath("/interview/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
+                	    .uri("lb://INTERVEIW-SERVICE")
+                	)
+
+                .route("interview-swagger", r -> r
+                        .path("/interveiw/swagger-ui/**")
+                        .filters(f -> f.rewritePath("/interview/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
+                        .uri("lb://INTERVIEW-SERVICE")
+                )
 
                 .build();
     }
