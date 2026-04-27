@@ -31,3 +31,5 @@ springdoc:
         url: /notification/v3/api-docs
       - name: Subscription Service
         url: /subscription/v3/api-docs
+      - name: Analytics Service
+        url: /analytics/v3/api-docs

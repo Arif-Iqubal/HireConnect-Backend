@@ -147,6 +147,25 @@ public class GatewayRoutesConfig {
                         .filters(f -> f.rewritePath("/subscription/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
                         .uri("lb://SUBSCRIPTION-SERVICE")
                 )
+                
+             // ================= ANALYTICS SERVICE =================
+                .route("analytics-service", r -> r
+                        .path("/analytics/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://ANALYTICS-SERVICE")
+                )
+
+                .route("analytics-api-docs", r -> r
+                	    .path("/analytics/v3/api-docs", "/analytics/v3/api-docs/**")
+                	    .filters(f -> f.rewritePath("/analytics/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
+                	    .uri("lb://ANALYTICS-SERVICE")
+                	)
+
+                .route("analytics-swagger", r -> r
+                        .path("/analytics/swagger-ui/**")
+                        .filters(f -> f.rewritePath("/analytics/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
+                        .uri("lb://ANALYTICS-SERVICE")
+                )
                 .build();
     }
 }
