@@ -22,7 +22,7 @@ public class OpenApiConfig {
         final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
         		.servers(List.of(
-                        new Server().url("/application")  // ✅ IMPORTANT
+                        new Server().url("/notification")  // ✅ IMPORTANT
                 ))
         		
         		
