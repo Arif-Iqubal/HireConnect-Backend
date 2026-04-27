@@ -29,3 +29,5 @@ springdoc:
         url: /interview/v3/api-docs
       - name: Notification Service
         url: /notification/v3/api-docs
+      - name: Subscription Service
+        url: /subscription/v3/api-docs

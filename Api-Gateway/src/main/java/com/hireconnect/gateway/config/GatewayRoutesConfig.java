@@ -123,12 +123,30 @@ public class GatewayRoutesConfig {
                 	    .uri("lb://NOTIFICATION-SERVICE")
                 	)
 
-                .route("interview-swagger", r -> r
+                .route("notification-swagger", r -> r
                         .path("/notification/swagger-ui/**")
                         .filters(f -> f.rewritePath("/notification/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
                         .uri("lb://NOTIFICATION-SERVICE")
                 )
 
+             // ================= SUBSCRIPTION SERVICE =================
+                .route("subscription-service", r -> r
+                        .path("/subscription/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://SUBSCRIPTION-SERVICE")
+                )
+
+                .route("subscription-api-docs", r -> r
+                	    .path("/subscription/v3/api-docs", "/subscription/v3/api-docs/**")
+                	    .filters(f -> f.rewritePath("/subscription/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
+                	    .uri("lb://SUBSCRIPTION-SERVICE")
+                	)
+
+                .route("subscription-swagger", r -> r
+                        .path("/subscription/swagger-ui/**")
+                        .filters(f -> f.rewritePath("/subscription/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
+                        .uri("lb://SUBSCRIPTION-SERVICE")
+                )
                 .build();
     }
 }
