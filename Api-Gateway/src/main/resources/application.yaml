@@ -23,3 +23,5 @@ springdoc:
         url: /profile/v3/api-docs
       - name: Job Service
         url: /job/v3/api-docs
+      - name: Application Service
+        url: /application/v3/api-docs

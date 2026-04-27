@@ -11,23 +11,18 @@ import java.util.Arrays;
 @Configuration
 public class CorsConfig {
 
-    @Bean
-    public CorsWebFilter corsWebFilter() {
-        CorsConfiguration config = new CorsConfiguration();
+	@Bean
+	public CorsWebFilter corsWebFilter() {
+	    CorsConfiguration config = new CorsConfiguration();
 
-        // ✅ Allow frontend + Swagger
-        config.setAllowedOrigins(Arrays.asList(
-                "http://localhost:4200",
-                "http://localhost:8080"
-        ));
+	    config.setAllowedOriginPatterns(Arrays.asList("*")); // ✅ FIX
+	    config.addAllowedHeader("*");
+	    config.addAllowedMethod("*");
+	    config.setAllowCredentials(true);
 
-        config.addAllowedHeader("*");
-        config.addAllowedMethod("*");
-        config.setAllowCredentials(true);
+	    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+	    source.registerCorsConfiguration("/**", config);
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-
-        return new CorsWebFilter(source);
-    }
+	    return new CorsWebFilter(source);
+	}
 }

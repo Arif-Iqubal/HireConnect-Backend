@@ -71,6 +71,25 @@ public class GatewayRoutesConfig {
                         .filters(f -> f.rewritePath("/job/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
                         .uri("lb://JOB-SERVICE")
                 )
+                
+                // ================= APPLICATION SERVICE =================
+                .route("application-service", r -> r
+                        .path("/application/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://APPLICATION-SERVICE")
+                )
+
+                .route("application-api-docs", r -> r
+                	    .path("/application/v3/api-docs", "/application/v3/api-docs/**")
+                	    .filters(f -> f.rewritePath("/application/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
+                	    .uri("lb://APPLICATION-SERVICE")
+                	)
+
+                .route("application-swagger", r -> r
+                        .path("/application/swagger-ui/**")
+                        .filters(f -> f.rewritePath("/application/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
+                        .uri("lb://APPLICATION-SERVICE")
+                )
 
                 .build();
     }
