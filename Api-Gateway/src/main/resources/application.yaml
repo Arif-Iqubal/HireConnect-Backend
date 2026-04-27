@@ -27,3 +27,5 @@ springdoc:
         url: /application/v3/api-docs
       - name: Interview Service
         url: /interview/v3/api-docs
+      - name: Notification Service
+        url: /notification/v3/api-docs

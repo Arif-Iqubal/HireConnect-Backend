@@ -101,13 +101,32 @@ public class GatewayRoutesConfig {
                 .route("interview-api-docs", r -> r
                 	    .path("/interview/v3/api-docs", "/interview/v3/api-docs/**")
                 	    .filters(f -> f.rewritePath("/interview/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
-                	    .uri("lb://INTERVEIW-SERVICE")
+                	    .uri("lb://INTERVIEW-SERVICE")
                 	)
 
                 .route("interview-swagger", r -> r
                         .path("/interveiw/swagger-ui/**")
                         .filters(f -> f.rewritePath("/interview/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
                         .uri("lb://INTERVIEW-SERVICE")
+                )
+                
+             // ================= NOTIFICATION SERVICE =================
+                .route("notification-service", r -> r
+                        .path("/notification/**")
+                        .filters(f -> f.stripPrefix(1))
+                        .uri("lb://NOTIFICATION-SERVICE")
+                )
+
+                .route("notification-api-docs", r -> r
+                	    .path("/notification/v3/api-docs", "/notification/v3/api-docs/**")
+                	    .filters(f -> f.rewritePath("/notification/v3/api-docs(?<segment>/?.*)", "/v3/api-docs${segment}"))
+                	    .uri("lb://NOTIFICATION-SERVICE")
+                	)
+
+                .route("interview-swagger", r -> r
+                        .path("/notification/swagger-ui/**")
+                        .filters(f -> f.rewritePath("/notification/swagger-ui/(?<segment>.*)", "/swagger-ui/${segment}"))
+                        .uri("lb://NOTIFICATION-SERVICE")
                 )
 
                 .build();
