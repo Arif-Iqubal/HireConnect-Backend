@@ -2,12 +2,17 @@ server:
   port: 8085
 
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+      - optional:file:../../.env[.properties]
   application:
     name:  INTERVIEW-SERVICE
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/interview_db
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:Arif@123}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
@@ -47,7 +52,7 @@ logging:
 
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
     enabled: true

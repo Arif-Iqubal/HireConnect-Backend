@@ -14,6 +14,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -88,6 +90,42 @@ class NotificationServiceImplTest {
             assertThat(result.getType()).isEqualTo("APPLICATION_SUBMITTED");
             assertThat(result.getIsRead()).isFalse();
             verify(notificationRepository).save(any(Notification.class));
+        }
+
+        @Test
+        @DisplayName("should save notification without sending email when email is blank")
+        void shouldSaveWithoutEmailWhenEmailIsBlank() {
+            Notification saved = buildNotification(2L, false);
+            saved.setUserEmail(" ");
+            NotificationResponse response = buildResponse(saved);
+
+            when(notificationRepository.save(any(Notification.class))).thenReturn(saved);
+            when(notificationMapper.toResponse(saved)).thenReturn(response);
+
+            NotificationResponse result = notificationService.sendNotification(
+                    1L, " ", "INFO", "Title", "Message", null, null, null);
+
+            assertThat(result.getNotificationId()).isEqualTo(2L);
+            verify(mailSender, never()).createMimeMessage();
+        }
+
+        @Test
+        @DisplayName("request overload should delegate and save notification")
+        void shouldSendNotificationFromRequest() {
+            com.hireconnect.notification.dto.request.SendNotificationRequest request =
+                    new com.hireconnect.notification.dto.request.SendNotificationRequest();
+            request.setUserId(1L);
+            request.setUserEmail("");
+            request.setType("INFO");
+            request.setTitle("Title");
+            request.setMessage("Message");
+
+            Notification saved = buildNotification(3L, false);
+            NotificationResponse response = buildResponse(saved);
+            when(notificationRepository.save(any(Notification.class))).thenReturn(saved);
+            when(notificationMapper.toResponse(saved)).thenReturn(response);
+
+            assertThat(notificationService.sendNotification(request).getNotificationId()).isEqualTo(3L);
         }
     }
 
@@ -171,6 +209,40 @@ class NotificationServiceImplTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getIsRead()).isFalse();
         }
+    }
+
+    @Test
+    @DisplayName("getNotificationsByUser() should return paged notifications")
+    void shouldReturnPagedNotifications() {
+        Notification n = buildNotification(1L, false);
+        NotificationResponse response = buildResponse(n);
+        when(notificationRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any()))
+                .thenReturn(new PageImpl<>(List.of(n)));
+        when(notificationMapper.toResponse(n)).thenReturn(response);
+
+        assertThat(notificationService.getNotificationsByUser(1L, PageRequest.of(0, 10)).getContent())
+                .containsExactly(response);
+    }
+
+    @Test
+    @DisplayName("getUnreadNotificationsByUserPaged() should return paged unread notifications")
+    void shouldReturnPagedUnreadNotifications() {
+        Notification n = buildNotification(1L, false);
+        NotificationResponse response = buildResponse(n);
+        when(notificationRepository.findByUserIdAndIsRead(eq(1L), eq(false), any()))
+                .thenReturn(new PageImpl<>(List.of(n)));
+        when(notificationMapper.toResponse(n)).thenReturn(response);
+
+        assertThat(notificationService.getUnreadNotificationsByUserPaged(1L, PageRequest.of(0, 10)).getContent())
+                .containsExactly(response);
+    }
+
+    @Test
+    @DisplayName("deleteNotification() should delete existing notification")
+    void shouldDeleteExistingNotification() {
+        when(notificationRepository.deleteByNotificationIdAndUserId(1L, 1L)).thenReturn(1);
+
+        assertThatCode(() -> notificationService.deleteNotification(1L, 1L)).doesNotThrowAnyException();
     }
 
     @Test

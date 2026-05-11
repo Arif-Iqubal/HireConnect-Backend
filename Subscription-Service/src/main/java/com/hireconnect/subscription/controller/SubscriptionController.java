@@ -1,8 +1,12 @@
 package com.hireconnect.subscription.controller;
 
 import com.hireconnect.subscription.dto.request.SubscribeRequest;
+import com.hireconnect.subscription.dto.request.RazorpayOrderRequest;
+import com.hireconnect.subscription.dto.request.RazorpayVerifyRequest;
 import com.hireconnect.subscription.dto.response.ApiResponse;
 import com.hireconnect.subscription.dto.response.InvoiceResponse;
+import com.hireconnect.subscription.dto.response.RazorpayOrderResponse;
+import com.hireconnect.subscription.dto.response.SubscriptionPlanResponse;
 import com.hireconnect.subscription.dto.response.SubscriptionResponse;
 import com.hireconnect.subscription.service.SubscriptionService;
 import jakarta.validation.Valid;
@@ -37,6 +41,30 @@ public class SubscriptionController {
         SubscriptionResponse response = subscriptionService.subscribe(recruiterId, request);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created("Subscribed successfully to " + request.getPlan() + " plan", response));
+    }
+
+    @GetMapping("/plans")
+    @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<List<SubscriptionPlanResponse>>> getPlans() {
+        return ResponseEntity.ok(ApiResponse.success(subscriptionService.getPlans()));
+    }
+
+    @PostMapping("/payments/razorpay/order")
+    @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<RazorpayOrderResponse>> createRazorpayOrder(
+            @Valid @RequestBody RazorpayOrderRequest request,
+            @RequestHeader("X-User-Id") Long recruiterId) {
+        RazorpayOrderResponse response = subscriptionService.createRazorpayOrder(recruiterId, request);
+        return ResponseEntity.ok(ApiResponse.success("Razorpay order created", response));
+    }
+
+    @PostMapping("/payments/razorpay/verify")
+    @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<SubscriptionResponse>> verifyRazorpayPayment(
+            @Valid @RequestBody RazorpayVerifyRequest request,
+            @RequestHeader("X-User-Id") Long recruiterId) {
+        SubscriptionResponse response = subscriptionService.verifyRazorpayPayment(recruiterId, request);
+        return ResponseEntity.ok(ApiResponse.success("Payment verified and subscription activated", response));
     }
 
     /** Get active subscription */
@@ -95,6 +123,11 @@ public class SubscriptionController {
     @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
     public ResponseEntity<ApiResponse<Integer>> getMaxJobPosts(
             @RequestParam Long recruiterId) {
+        return ResponseEntity.ok(ApiResponse.success(subscriptionService.getMaxJobPosts(recruiterId)));
+    }
+
+    @GetMapping("/internal/recruiters/{recruiterId}/max-posts")
+    public ResponseEntity<ApiResponse<Integer>> getInternalMaxJobPosts(@PathVariable Long recruiterId) {
         return ResponseEntity.ok(ApiResponse.success(subscriptionService.getMaxJobPosts(recruiterId)));
     }
 

@@ -1,0 +1,49 @@
+# Build output
+**/target/
+**/build/
+**/out/
+*.class
+*.jar
+*.war
+
+# Test and coverage output
+**/coverage/
+**/reports/
+**/.scannerwork/
+**/jacoco.exec
+**/surefire-reports/
+
+# Runtime uploads and generated files
+**/uploads/
+**/logs/
+*.log
+*.tmp
+*.swp
+*~
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+*.local
+application-*.yml
+application-*.yaml
+application-*.properties
+!**/src/test/resources/application.yml
+!**/src/test/resources/application.yaml
+
+# IDE and OS files
+.metadata/
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/
+.DS_Store
+Thumbs.db
+
+# Frontend or tooling output that may appear in backend workspace
+**/node_modules/
+**/dist/
+**/.angular/

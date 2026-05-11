@@ -21,11 +21,10 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
-        		.servers(List.of(
-                        new Server().url("/interview")  // ✅ IMPORTANT
+                .servers(List.of(
+                        new Server().url("http://localhost:8080").description("Via API Gateway"),
+                        new Server().url("http://localhost:8085").description("Local Interview Service")
                 ))
-        		
-        		
                 .info(new Info()
                         .title("HireConnect — Interview Service API")
                         .description("Manages interview scheduling, confirmation, rescheduling and cancellation.")

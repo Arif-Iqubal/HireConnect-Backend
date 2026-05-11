@@ -1,6 +1,7 @@
 package com.hireconnect.application.service;
 
 import com.hireconnect.application.dto.request.SubmitApplicationRequest;
+import com.hireconnect.application.dto.request.RecruiterMessageRequest;
 import com.hireconnect.application.dto.request.UpdateStatusRequest;
 import com.hireconnect.application.dto.response.ApplicationResponse;
 import com.hireconnect.application.entity.Application;
@@ -17,6 +18,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -204,6 +206,47 @@ class ApplicationServiceImplTest {
     }
 
     // ─── withdrawApplication ───────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("sendMessageToCandidate()")
+    class SendMessageToCandidateTests {
+
+        @Test
+        @DisplayName("should allow recruiter to message an interview-scheduled candidate")
+        void shouldAllowMessageForInterviewScheduledCandidate() {
+            Application app = buildApplication(1L, ApplicationStatus.INTERVIEW_SCHEDULED);
+            RecruiterMessageRequest request = new RecruiterMessageRequest();
+            request.setMessage("Please confirm your availability for the next round.");
+
+            when(applicationRepository.findById(1L)).thenReturn(Optional.of(app));
+
+            assertThatCode(() -> applicationService.sendMessageToCandidate(1L, request, 2L))
+                    .doesNotThrowAnyException();
+
+            verify(rabbitTemplate).convertAndSend(
+                    eq("hireconnect.exchange"),
+                    eq("notification.routing.key"),
+                    ArgumentMatchers.<Object>argThat(event -> event instanceof java.util.Map<?, ?> map
+                            && "CANDIDATE_MESSAGE".equals(map.get("eventType"))
+                            && "Please confirm your availability for the next round.".equals(map.get("message"))));
+        }
+
+        @Test
+        @DisplayName("should block recruiter message before candidate is shortlisted")
+        void shouldBlockMessageForAppliedCandidate() {
+            Application app = buildApplication(1L, ApplicationStatus.APPLIED);
+            RecruiterMessageRequest request = new RecruiterMessageRequest();
+            request.setMessage("Hello candidate.");
+
+            when(applicationRepository.findById(1L)).thenReturn(Optional.of(app));
+
+            assertThatThrownBy(() -> applicationService.sendMessageToCandidate(1L, request, 2L))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessageContaining("shortlisted, scheduled, or offered");
+
+            verify(rabbitTemplate, never()).convertAndSend(anyString(), anyString(), any(Object.class));
+        }
+    }
 
     @Nested
     @DisplayName("withdrawApplication()")

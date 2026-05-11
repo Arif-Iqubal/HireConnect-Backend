@@ -186,7 +186,7 @@ class InterviewServiceImplTest {
     class RescheduleTests {
 
         @Test
-        @DisplayName("should reschedule a CONFIRMED interview as candidate")
+        @DisplayName("should reschedule a CONFIRMED interview as recruiter")
         void shouldRescheduleConfirmedInterview() {
             Interview interview = buildInterview(1L, InterviewStatus.CONFIRMED);
             Interview rescheduled = buildInterview(1L, InterviewStatus.RESCHEDULED);
@@ -200,9 +200,30 @@ class InterviewServiceImplTest {
             when(interviewRepository.save(any())).thenReturn(rescheduled);
             when(interviewMapper.toResponse(any())).thenReturn(response);
 
-            InterviewResponse result = interviewService.rescheduleInterview(1L, request, 1L);
+            InterviewResponse result = interviewService.rescheduleInterview(1L, request, 2L);
 
             assertThat(result.getStatus()).isEqualTo(InterviewStatus.RESCHEDULED);
+        }
+
+        @Test
+        @DisplayName("should store candidate reschedule request with requested date")
+        void shouldRequestRescheduleWithRequestedDate() {
+            Interview interview = buildInterview(1L, InterviewStatus.CONFIRMED);
+            Interview requested = buildInterview(1L, InterviewStatus.RESCHEDULE_REQUESTED);
+            LocalDateTime requestedAt = LocalDateTime.now().plusDays(5);
+            InterviewResponse response = buildResponse(requested);
+
+            RescheduleInterviewRequest request = new RescheduleInterviewRequest();
+            request.setNewScheduledAt(requestedAt);
+            request.setRescheduleReason("Candidate requested a different time");
+
+            when(interviewRepository.findById(1L)).thenReturn(Optional.of(interview));
+            when(interviewRepository.save(any())).thenReturn(requested);
+            when(interviewMapper.toResponse(any())).thenReturn(response);
+
+            InterviewResponse result = interviewService.requestReschedule(1L, 1L, request);
+
+            assertThat(result.getStatus()).isEqualTo(InterviewStatus.RESCHEDULE_REQUESTED);
         }
 
         @Test

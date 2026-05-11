@@ -22,4 +22,6 @@ public interface InterviewService {
     Page<InterviewResponse> getInterviewsByRecruiter(Long recruiterId, Pageable pageable);
     List<InterviewResponse> getUpcomingInterviewsByRecruiter(Long recruiterId);
     Page<InterviewResponse> getInterviewsByRecruiterAndStatus(Long recruiterId, InterviewStatus status, Pageable pageable);
+    InterviewResponse requestReschedule(Long interviewId, Long candidateId, RescheduleInterviewRequest request);
+    InterviewResponse rejectReschedule(Long interviewId, Long recruiterId, String reason);
 }

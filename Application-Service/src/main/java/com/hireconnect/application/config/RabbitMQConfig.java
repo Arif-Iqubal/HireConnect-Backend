@@ -28,16 +28,12 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue notificationQueue() {
-        return QueueBuilder.durable("notification.queue")
-                .withArgument("x-dead-letter-exchange", exchange + ".dlx")
-                .build();
+        return QueueBuilder.durable("notification.queue").build();
     }
 
     @Bean
     public Queue analyticsQueue() {
-        return QueueBuilder.durable("analytics.queue")
-                .withArgument("x-dead-letter-exchange", exchange + ".dlx")
-                .build();
+        return QueueBuilder.durable("analytics.queue").build();
     }
 
     @Bean

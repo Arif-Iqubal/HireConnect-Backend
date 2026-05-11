@@ -1,6 +1,7 @@
 package com.hireconnect.application.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hireconnect.application.dto.request.RecruiterMessageRequest;
 import com.hireconnect.application.dto.request.SubmitApplicationRequest;
 import com.hireconnect.application.dto.response.ApplicationResponse;
 import com.hireconnect.application.enums.ApplicationStatus;
@@ -10,11 +11,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -22,6 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -29,12 +34,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(ApplicationController.class)
+@Import(ApplicationControllerTest.MethodSecurityConfig.class)
 @DisplayName("ApplicationController Tests")
 class ApplicationControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @MockBean  private ApplicationService applicationService;
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class MethodSecurityConfig {
+    }
 
     private ApplicationResponse sampleResponse() {
         return ApplicationResponse.builder()
@@ -151,6 +162,25 @@ class ApplicationControllerTest {
                         .param("candidateId", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data").value(true));
+    }
+
+    @Test
+    @DisplayName("POST /api/v1/applications/{id}/messages - should send recruiter message")
+    @WithMockUser(roles = "RECRUITER")
+    void shouldSendRecruiterMessage() throws Exception {
+        RecruiterMessageRequest request = new RecruiterMessageRequest();
+        request.setMessage("Please share your availability for the next interview round.");
+
+        mockMvc.perform(post("/api/v1/applications/4/messages")
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-User-Id", "2")
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("Message sent to candidate"));
+
+        verify(applicationService).sendMessageToCandidate(eq(4L), any(RecruiterMessageRequest.class), eq(2L));
     }
 
     @Test

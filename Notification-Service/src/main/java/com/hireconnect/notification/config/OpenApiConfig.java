@@ -21,11 +21,10 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
-        		.servers(List.of(
-                        new Server().url("/notification")  // ✅ IMPORTANT
+                .servers(List.of(
+                        new Server().url("http://localhost:8080").description("Via API Gateway"),
+                        new Server().url("http://localhost:8086").description("Local Notification Service")
                 ))
-        		
-        		
                 .info(new Info()
                         .title("HireConnect — Notification Service API")
                         .description("Manages in-app and email notifications for all platform events.")

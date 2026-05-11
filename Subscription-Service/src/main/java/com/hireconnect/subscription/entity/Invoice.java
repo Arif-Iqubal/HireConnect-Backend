@@ -41,6 +41,12 @@ public class Invoice {
     @Column(name = "transaction_id", unique = true)
     private String transactionId;
 
+    @Column(name = "razorpay_order_id")
+    private String razorpayOrderId;
+
+    @Column(name = "razorpay_payment_id")
+    private String razorpayPaymentId;
+
     @Column(name = "invoice_number", unique = true)
     private String invoiceNumber;
 

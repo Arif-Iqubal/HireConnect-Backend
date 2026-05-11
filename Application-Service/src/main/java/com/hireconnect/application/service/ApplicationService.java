@@ -1,6 +1,7 @@
 package com.hireconnect.application.service;
 
 import com.hireconnect.application.dto.request.SubmitApplicationRequest;
+import com.hireconnect.application.dto.request.RecruiterMessageRequest;
 import com.hireconnect.application.dto.request.UpdateStatusRequest;
 import com.hireconnect.application.dto.response.ApplicationResponse;
 import com.hireconnect.application.enums.ApplicationStatus;
@@ -27,6 +28,8 @@ public interface ApplicationService {
     Page<ApplicationResponse> getApplicationsByRecruiter(Long recruiterId, Pageable pageable);
 
     ApplicationResponse updateApplicationStatus(Long applicationId, UpdateStatusRequest request, Long recruiterId);
+
+    void sendMessageToCandidate(Long applicationId, RecruiterMessageRequest request, Long recruiterId);
 
     void withdrawApplication(Long applicationId, Long candidateId);
 

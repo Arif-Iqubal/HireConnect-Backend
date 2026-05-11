@@ -1,6 +1,7 @@
 package com.hireconnect.interview.controller;
 
 import com.hireconnect.interview.dto.request.RescheduleInterviewRequest;
+import org.springframework.security.core.Authentication;
 import com.hireconnect.interview.dto.request.ScheduleInterviewRequest;
 import com.hireconnect.interview.dto.response.ApiResponse;
 import com.hireconnect.interview.dto.response.InterviewResponse;
@@ -18,6 +19,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 @RestController
@@ -27,6 +30,23 @@ import java.util.List;
 public class InterviewController {
 
     private final InterviewService interviewService;
+    
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<ApiResponse<List<InterviewResponse>>> getMyInterviews(
+            @RequestHeader(value = "X-User-Id", required = false) Long candidateId,
+            Authentication authentication) {
+
+        Long requesterId = resolveUserId(candidateId, authentication);
+        Pageable pageable = PageRequest.of(0, 200, Sort.by("scheduledAt").descending());
+
+        List<InterviewResponse> result = interviewService
+                .getInterviewsByCandidate(requesterId, pageable)
+                .getContent();
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+    
 
     @PostMapping
     @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
@@ -54,13 +74,51 @@ public class InterviewController {
     }
 
     @PatchMapping("/{interviewId}/reschedule")
-    @PreAuthorize("hasAnyRole('CANDIDATE', 'RECRUITER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
     public ResponseEntity<ApiResponse<InterviewResponse>> rescheduleInterview(
             @PathVariable Long interviewId,
             @Valid @RequestBody RescheduleInterviewRequest request,
             @RequestHeader("X-User-Id") Long requesterId) {
         InterviewResponse response = interviewService.rescheduleInterview(interviewId, request, requesterId);
         return ResponseEntity.ok(ApiResponse.success("Interview rescheduled successfully", response));
+    }
+
+    @PatchMapping("/{interviewId}/request-reschedule")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<ApiResponse<InterviewResponse>> requestReschedule(
+            @PathVariable Long interviewId,
+            @RequestBody(required = false) RescheduleInterviewRequest body,
+            @RequestParam(required = false) String newScheduledAt,
+            @RequestParam(required = false) String reason,
+            @RequestParam(required = false) String rescheduleReason,
+            @RequestHeader(value = "X-User-Id", required = false) Long candidateId,
+            Authentication authentication) {
+        RescheduleInterviewRequest request = body != null ? body : new RescheduleInterviewRequest();
+        if (request.getRescheduleReason() == null || request.getRescheduleReason().isBlank()) {
+            request.setRescheduleReason(reason != null && !reason.isBlank() ? reason : rescheduleReason);
+        }
+
+        if (request.getNewScheduledAt() == null && newScheduledAt != null && !newScheduledAt.isBlank()) {
+            try {
+                request.setNewScheduledAt(LocalDateTime.parse(newScheduledAt));
+            } catch (DateTimeParseException ex) {
+                throw new IllegalStateException("Invalid date/time format");
+            }
+        }
+
+        Long requesterId = resolveUserId(candidateId, authentication);
+        InterviewResponse response = interviewService.requestReschedule(interviewId, requesterId, request);
+        return ResponseEntity.ok(ApiResponse.success("Interview reschedule requested successfully", response));
+    }
+
+    @PatchMapping("/{interviewId}/reject-reschedule")
+    @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
+    public ResponseEntity<ApiResponse<InterviewResponse>> rejectReschedule(
+            @PathVariable Long interviewId,
+            @RequestParam String reason,
+            @RequestHeader("X-User-Id") Long recruiterId) {
+        InterviewResponse response = interviewService.rejectReschedule(interviewId, recruiterId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Interview reschedule request rejected", response));
     }
 
     @PatchMapping("/{interviewId}/cancel")
@@ -122,5 +180,21 @@ public class InterviewController {
     @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
     public ResponseEntity<ApiResponse<List<InterviewResponse>>> getUpcomingByRecruiter(@PathVariable Long recruiterId) {
         return ResponseEntity.ok(ApiResponse.success(interviewService.getUpcomingInterviewsByRecruiter(recruiterId)));
+    }
+
+    private Long resolveUserId(Long headerUserId, Authentication authentication) {
+        if (headerUserId != null) {
+            return headerUserId;
+        }
+
+        if (authentication == null || authentication.getName() == null || authentication.getName().isBlank()) {
+            throw new IllegalStateException("Candidate identity is required");
+        }
+
+        try {
+            return Long.parseLong(authentication.getName());
+        } catch (NumberFormatException ex) {
+            throw new IllegalStateException("Candidate identity is invalid");
+        }
     }
 }

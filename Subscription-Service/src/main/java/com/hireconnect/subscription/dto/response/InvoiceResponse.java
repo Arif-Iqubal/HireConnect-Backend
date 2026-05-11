@@ -18,6 +18,8 @@ public class InvoiceResponse {
     private LocalDateTime paymentDate;
     private PaymentMode paymentMode;
     private String transactionId;
+    private String razorpayOrderId;
+    private String razorpayPaymentId;
     private String invoiceNumber;
     private String planName;
     private LocalDateTime createdAt;

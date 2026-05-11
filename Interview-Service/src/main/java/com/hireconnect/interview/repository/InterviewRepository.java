@@ -39,14 +39,14 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     );
 
     @Query("SELECT i FROM Interview i WHERE i.candidateId = :candidateId AND i.scheduledAt > :now " +
-           "AND i.status IN ('SCHEDULED', 'CONFIRMED') ORDER BY i.scheduledAt ASC")
+           "AND i.status IN ('SCHEDULED', 'CONFIRMED', 'RESCHEDULE_REQUESTED', 'RESCHEDULED') ORDER BY i.scheduledAt ASC")
     List<Interview> findUpcomingByCandidate(
             @Param("candidateId") Long candidateId,
             @Param("now") LocalDateTime now
     );
 
     @Query("SELECT i FROM Interview i WHERE i.recruiterId = :recruiterId AND i.scheduledAt > :now " +
-           "AND i.status IN ('SCHEDULED', 'CONFIRMED') ORDER BY i.scheduledAt ASC")
+           "AND i.status IN ('SCHEDULED', 'CONFIRMED', 'RESCHEDULE_REQUESTED', 'RESCHEDULED') ORDER BY i.scheduledAt ASC")
     List<Interview> findUpcomingByRecruiter(
             @Param("recruiterId") Long recruiterId,
             @Param("now") LocalDateTime now

@@ -1,6 +1,7 @@
 package com.hireconnect.analytics.controller;
 
 import com.hireconnect.analytics.dto.response.ApiResponse;
+import org.springframework.security.core.Authentication;
 import com.hireconnect.analytics.dto.response.PlatformAnalyticsResponse;
 import com.hireconnect.analytics.dto.response.RecruiterAnalyticsResponse;
 import com.hireconnect.analytics.service.AnalyticsService;
@@ -19,12 +20,20 @@ public class AnalyticsController {
     private final AnalyticsService analyticsService;
 
     /** Recruiter dashboard analytics */
-    @GetMapping("/recruiter/{recruiterId}")
+    @GetMapping("/recruiter")
     @PreAuthorize("hasAnyRole('RECRUITER', 'ADMIN')")
     public ResponseEntity<ApiResponse<RecruiterAnalyticsResponse>> getRecruiterStats(
-            @PathVariable Long recruiterId) {
+            Authentication authentication) {
+
+        Long recruiterId = Long.parseLong(authentication.getName());
+
         log.info("GET /analytics/recruiter/{}", recruiterId);
-        return ResponseEntity.ok(ApiResponse.success(analyticsService.getRecruiterStats(recruiterId)));
+
+        return ResponseEntity.ok(
+            ApiResponse.success(
+                analyticsService.getRecruiterStats(recruiterId)
+            )
+        );
     }
 
     /** Platform-wide admin analytics */

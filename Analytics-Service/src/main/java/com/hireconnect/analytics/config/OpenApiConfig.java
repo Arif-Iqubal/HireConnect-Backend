@@ -21,10 +21,10 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
-        		.servers(List.of(
-                        new Server().url("/analytics")  // ✅ IMPORTANT
+                .servers(List.of(
+                        new Server().url("http://localhost:8080").description("Via API Gateway"),
+                        new Server().url("http://localhost:8088").description("Local Analytics Service")
                 ))
-        		
                 .info(new Info()
                         .title("HireConnect — Analytics Service API")
                         .description("Provides recruiter-level and platform-wide hiring metrics and analytics.")

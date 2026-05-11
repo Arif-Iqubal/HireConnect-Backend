@@ -7,8 +7,13 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class InterviewResponse {
     private Long interviewId;
     private Long applicationId;
@@ -28,6 +33,8 @@ public class InterviewResponse {
     private String notes;
     private String cancellationReason;
     private String rescheduleReason;
+    private LocalDateTime requestedScheduledAt;
+    private InterviewStatus statusBeforeRescheduleRequest;
     private String interviewerName;
     private Integer roundNumber;
     private LocalDateTime createdAt;

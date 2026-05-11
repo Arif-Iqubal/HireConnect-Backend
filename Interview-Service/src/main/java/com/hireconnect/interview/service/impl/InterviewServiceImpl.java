@@ -28,6 +28,8 @@ import java.util.Map;
 @Slf4j
 @Transactional
 public class InterviewServiceImpl implements InterviewService {
+    private static final String REQUESTED_AT_PREFIX = "Requested date: ";
+    private static final String PREVIOUS_STATUS_PREFIX = "Previous status: ";
 
     private final InterviewRepository interviewRepository;
     private final InterviewMapper interviewMapper;
@@ -68,7 +70,7 @@ public class InterviewServiceImpl implements InterviewService {
                 request.getCandidateId(), request.getScheduledAt());
 
         publishInterviewEvent("INTERVIEW_SCHEDULED", saved);
-        return interviewMapper.toResponse(saved);
+        return toResponse(saved);
     }
 
     @Override
@@ -88,18 +90,17 @@ public class InterviewServiceImpl implements InterviewService {
         Interview updated = interviewRepository.save(interview);
 
         publishInterviewEvent("INTERVIEW_CONFIRMED", updated);
-        return interviewMapper.toResponse(updated);
+        return toResponse(updated);
     }
 
     @Override
     public InterviewResponse rescheduleInterview(Long interviewId, RescheduleInterviewRequest request, Long requesterId) {
         Interview interview = findById(interviewId);
 
-        boolean isCandidate = interview.getCandidateId().equals(requesterId);
         boolean isRecruiter = interview.getRecruiterId().equals(requesterId);
 
-        if (!isCandidate && !isRecruiter) {
-            throw new AccessDeniedException("You are not authorized to reschedule this interview");
+        if (!isRecruiter) {
+            throw new AccessDeniedException("Only the assigned recruiter can reschedule this interview");
         }
 
         if (interview.getStatus() == InterviewStatus.CANCELLED ||
@@ -107,15 +108,23 @@ public class InterviewServiceImpl implements InterviewService {
             throw new IllegalStateException("Cannot reschedule interview with status: " + interview.getStatus());
         }
 
-        interview.setScheduledAt(request.getNewScheduledAt());
+        LocalDateTime newScheduledAt = request.getNewScheduledAt() != null
+                ? request.getNewScheduledAt()
+                : extractRequestedScheduledAt(interview.getRescheduleReason());
+
+        if (newScheduledAt == null) {
+            throw new IllegalStateException("New scheduled date/time is required");
+        }
+
+        interview.setScheduledAt(newScheduledAt);
         interview.setStatus(InterviewStatus.RESCHEDULED);
-        interview.setRescheduleReason(request.getRescheduleReason());
+        interview.setRescheduleReason(cleanRescheduleReason(request.getRescheduleReason()));
         if (request.getMeetLink() != null) interview.setMeetLink(request.getMeetLink());
         if (request.getLocation() != null) interview.setLocation(request.getLocation());
 
         Interview updated = interviewRepository.save(interview);
         publishInterviewEvent("INTERVIEW_RESCHEDULED", updated);
-        return interviewMapper.toResponse(updated);
+        return toResponse(updated);
     }
 
     @Override
@@ -139,7 +148,7 @@ public class InterviewServiceImpl implements InterviewService {
 
         Interview updated = interviewRepository.save(interview);
         publishInterviewEvent("INTERVIEW_CANCELLED", updated);
-        return interviewMapper.toResponse(updated);
+        return toResponse(updated);
     }
 
     @Override
@@ -157,55 +166,112 @@ public class InterviewServiceImpl implements InterviewService {
 
         interview.setStatus(InterviewStatus.COMPLETED);
         Interview updated = interviewRepository.save(interview);
-        return interviewMapper.toResponse(updated);
+        return toResponse(updated);
     }
 
     @Override
     @Transactional(readOnly = true)
     public InterviewResponse getInterviewById(Long interviewId) {
-        return interviewMapper.toResponse(findById(interviewId));
+        return toResponse(findById(interviewId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<InterviewResponse> getInterviewsByApplication(Long applicationId) {
         return interviewRepository.findByApplicationId(applicationId)
-                .stream().map(interviewMapper::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<InterviewResponse> getInterviewsByCandidate(Long candidateId, Pageable pageable) {
         return interviewRepository.findByCandidateId(candidateId, pageable)
-                .map(interviewMapper::toResponse);
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<InterviewResponse> getUpcomingInterviewsByCandidate(Long candidateId) {
         return interviewRepository.findUpcomingByCandidate(candidateId, LocalDateTime.now())
-                .stream().map(interviewMapper::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<InterviewResponse> getInterviewsByRecruiter(Long recruiterId, Pageable pageable) {
         return interviewRepository.findByRecruiterId(recruiterId, pageable)
-                .map(interviewMapper::toResponse);
+                .map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<InterviewResponse> getUpcomingInterviewsByRecruiter(Long recruiterId) {
         return interviewRepository.findUpcomingByRecruiter(recruiterId, LocalDateTime.now())
-                .stream().map(interviewMapper::toResponse).toList();
+                .stream().map(this::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<InterviewResponse> getInterviewsByRecruiterAndStatus(Long recruiterId, InterviewStatus status, Pageable pageable) {
         return interviewRepository.findByRecruiterIdAndStatus(recruiterId, status, pageable)
-                .map(interviewMapper::toResponse);
+                .map(this::toResponse);
+    }
+
+    @Override
+    public InterviewResponse requestReschedule(Long interviewId, Long candidateId, RescheduleInterviewRequest request) {
+        Interview interview = findById(interviewId);
+
+        if (!interview.getCandidateId().equals(candidateId)) {
+            throw new AccessDeniedException("Only the candidate can request to reschedule this interview");
+        }
+
+        if (interview.getStatus() != InterviewStatus.SCHEDULED &&
+                interview.getStatus() != InterviewStatus.CONFIRMED &&
+                interview.getStatus() != InterviewStatus.RESCHEDULED) {
+            throw new IllegalStateException("Cannot request reschedule for interview in status: " + interview.getStatus());
+        }
+
+        if (request.getNewScheduledAt() == null) {
+            throw new IllegalStateException("New scheduled date/time is required");
+        }
+
+        if (!request.getNewScheduledAt().isAfter(LocalDateTime.now())) {
+            throw new IllegalStateException("New interview time must be in the future");
+        }
+
+        if (request.getRescheduleReason() == null || request.getRescheduleReason().isBlank()) {
+            throw new IllegalStateException("Reschedule reason is required");
+        }
+
+        interview.setRescheduleReason(buildStoredRescheduleReason(
+                request.getNewScheduledAt(),
+                interview.getStatus(),
+                request.getRescheduleReason()
+        ));
+        Interview updated = interviewRepository.save(interview);
+        publishInterviewEvent("INTERVIEW_RESCHEDULE_REQUESTED", updated);
+        return toResponse(updated);
+    }
+
+    @Override
+    public InterviewResponse rejectReschedule(Long interviewId, Long recruiterId, String reason) {
+        Interview interview = findById(interviewId);
+
+        if (!interview.getRecruiterId().equals(recruiterId)) {
+            throw new AccessDeniedException("Only the assigned recruiter can reject a reschedule request");
+        }
+
+        if (extractRequestedScheduledAt(interview.getRescheduleReason()) == null) {
+            throw new IllegalStateException("Interview does not have a pending reschedule request");
+        }
+
+        interview.setStatus(extractPreviousStatus(interview.getRescheduleReason()));
+        interview.setRescheduleReason(null);
+        interview.setNotes(interview.getNotes() != null ? interview.getNotes() + "\nReschedule rejected: " + reason : "Reschedule rejected: " + reason);
+
+        Interview updated = interviewRepository.save(interview);
+        publishInterviewEvent("INTERVIEW_RESCHEDULE_REJECTED", updated);
+        return toResponse(updated);
     }
 
     private Interview findById(Long interviewId) {
@@ -215,21 +281,94 @@ public class InterviewServiceImpl implements InterviewService {
 
     private void publishInterviewEvent(String eventType, Interview interview) {
         try {
-            Map<String, Object> event = Map.of(
-                "eventType", eventType,
-                "interviewId", interview.getInterviewId(),
-                "candidateId", interview.getCandidateId(),
-                "candidateEmail", interview.getCandidateEmail() != null ? interview.getCandidateEmail() : "",
-                "candidateName", interview.getCandidateName() != null ? interview.getCandidateName() : "",
-                "jobTitle", interview.getJobTitle() != null ? interview.getJobTitle() : "",
-                "companyName", interview.getCompanyName() != null ? interview.getCompanyName() : "",
-                "scheduledAt", interview.getScheduledAt().toString(),
-                "mode", interview.getMode().name(),
-                "status", interview.getStatus().name()
+            LocalDateTime requestedScheduledAt = extractRequestedScheduledAt(interview.getRescheduleReason());
+            Map<String, Object> event = Map.ofEntries(
+                Map.entry("eventType", eventType),
+                Map.entry("interviewId", safeLong(interview.getInterviewId())),
+                Map.entry("applicationId", safeLong(interview.getApplicationId())),
+                Map.entry("candidateId", safeLong(interview.getCandidateId())),
+                Map.entry("recruiterId", safeLong(interview.getRecruiterId())),
+                Map.entry("candidateEmail", interview.getCandidateEmail() != null ? interview.getCandidateEmail() : ""),
+                Map.entry("candidateName", interview.getCandidateName() != null ? interview.getCandidateName() : ""),
+                Map.entry("jobTitle", interview.getJobTitle() != null ? interview.getJobTitle() : ""),
+                Map.entry("companyName", interview.getCompanyName() != null ? interview.getCompanyName() : ""),
+                Map.entry("scheduledAt", interview.getScheduledAt() != null ? interview.getScheduledAt().toString() : ""),
+                Map.entry("requestedScheduledAt", requestedScheduledAt != null ? requestedScheduledAt.toString() : ""),
+                Map.entry("mode", interview.getMode() != null ? interview.getMode().name() : ""),
+                Map.entry("status", interview.getStatus() != null ? interview.getStatus().name() : "")
             );
             rabbitTemplate.convertAndSend(exchange, notificationRoutingKey, event);
         } catch (Exception e) {
             log.error("Failed to publish interview event {}: {}", eventType, e.getMessage());
         }
+    }
+
+    private InterviewResponse toResponse(Interview interview) {
+        InterviewResponse response = interviewMapper.toResponse(interview);
+        LocalDateTime requestedScheduledAt = extractRequestedScheduledAt(interview.getRescheduleReason());
+        response.setRequestedScheduledAt(requestedScheduledAt);
+        response.setStatusBeforeRescheduleRequest(extractPreviousStatus(interview.getRescheduleReason()));
+        response.setRescheduleReason(cleanRescheduleReason(interview.getRescheduleReason()));
+        if (requestedScheduledAt != null) {
+            response.setStatus(InterviewStatus.RESCHEDULE_REQUESTED);
+        }
+        return response;
+    }
+
+    private String buildStoredRescheduleReason(LocalDateTime requestedAt, InterviewStatus previousStatus, String reason) {
+        return REQUESTED_AT_PREFIX + requestedAt + "\n" +
+                PREVIOUS_STATUS_PREFIX + previousStatus + "\n" +
+                reason.trim();
+    }
+
+    private LocalDateTime extractRequestedScheduledAt(String storedReason) {
+        if (storedReason == null || !storedReason.startsWith(REQUESTED_AT_PREFIX)) {
+            return null;
+        }
+
+        String firstLine = storedReason.lines().findFirst().orElse("");
+        String value = firstLine.substring(REQUESTED_AT_PREFIX.length()).trim();
+
+        try {
+            return LocalDateTime.parse(value);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private InterviewStatus extractPreviousStatus(String storedReason) {
+        if (storedReason == null) {
+            return InterviewStatus.SCHEDULED;
+        }
+
+        return storedReason.lines()
+                .filter(line -> line.startsWith(PREVIOUS_STATUS_PREFIX))
+                .findFirst()
+                .map(line -> line.substring(PREVIOUS_STATUS_PREFIX.length()).trim())
+                .map(value -> {
+                    try {
+                        return InterviewStatus.valueOf(value);
+                    } catch (Exception ex) {
+                        return InterviewStatus.SCHEDULED;
+                    }
+                })
+                .orElse(InterviewStatus.SCHEDULED);
+    }
+
+    private String cleanRescheduleReason(String storedReason) {
+        if (storedReason == null) {
+            return null;
+        }
+
+        return storedReason.lines()
+                .filter(line -> !line.startsWith(REQUESTED_AT_PREFIX))
+                .filter(line -> !line.startsWith(PREVIOUS_STATUS_PREFIX))
+                .reduce((first, second) -> first + "\n" + second)
+                .orElse("")
+                .trim();
+    }
+
+    private Long safeLong(Long value) {
+        return value != null ? value : 0L;
     }
 }

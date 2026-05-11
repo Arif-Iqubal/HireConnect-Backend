@@ -1,6 +1,8 @@
 package com.hireconnect.application.controller;
 
 import com.hireconnect.application.dto.request.SubmitApplicationRequest;
+import com.hireconnect.application.dto.request.RecruiterMessageRequest;
+import org.springframework.security.core.Authentication;
 import com.hireconnect.application.dto.request.UpdateStatusRequest;
 import com.hireconnect.application.dto.response.ApiResponse;
 import com.hireconnect.application.dto.response.ApplicationResponse;
@@ -27,6 +29,19 @@ import java.util.List;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('CANDIDATE')")
+    public ResponseEntity<ApiResponse<List<ApplicationResponse>>> getMyApplications(
+            Authentication authentication) {
+
+        Long candidateId =
+                Long.parseLong(authentication.getName());
+
+        List<ApplicationResponse> result =
+                applicationService.getAllApplicationsByCandidate(candidateId);
+
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
 
     /**
      * Submit a new application — Candidate only
@@ -36,8 +51,8 @@ public class ApplicationController {
     public ResponseEntity<ApiResponse<ApplicationResponse>> submitApplication(
             @Valid @RequestBody SubmitApplicationRequest request,
             @RequestHeader("X-User-Id") Long candidateId,
-            @RequestHeader("X-User-Name") String candidateName,
-            @RequestHeader("X-User-Email") String candidateEmail) {
+            @RequestHeader(value = "X-User-Name", required = false) String candidateName,
+            @RequestHeader(value = "X-User-Email", required = false) String candidateEmail) {
         log.info("POST /api/v1/applications - candidateId={}", candidateId);
         ApplicationResponse response = applicationService.submitApplication(
                 candidateId, candidateName, candidateEmail, request);
@@ -130,6 +145,20 @@ public class ApplicationController {
         log.info("PATCH /api/v1/applications/{}/status - recruiter={}", applicationId, recruiterId);
         ApplicationResponse response = applicationService.updateApplicationStatus(applicationId, request, recruiterId);
         return ResponseEntity.ok(ApiResponse.success("Application status updated successfully", response));
+    }
+
+    /**
+     * Send a portal message to a candidate in shortlisted or later active stages — Recruiter only
+     */
+    @PostMapping("/{applicationId}/messages")
+    @PreAuthorize("hasRole('RECRUITER')")
+    public ResponseEntity<ApiResponse<Void>> sendMessageToCandidate(
+            @PathVariable Long applicationId,
+            @Valid @RequestBody RecruiterMessageRequest request,
+            @RequestHeader("X-User-Id") Long recruiterId) {
+        log.info("POST /api/v1/applications/{}/messages - recruiter={}", applicationId, recruiterId);
+        applicationService.sendMessageToCandidate(applicationId, request, recruiterId);
+        return ResponseEntity.ok(ApiResponse.success("Message sent to candidate", null));
     }
 
     /**

@@ -21,11 +21,10 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
-        		.servers(List.of(
-                        new Server().url("/application")  // ✅ IMPORTANT
+                .servers(List.of(
+                        new Server().url("http://localhost:8080").description("Via API Gateway"),
+                        new Server().url("http://localhost:8084").description("Local Application Service")
                 ))
-        		
-        		
                 .info(new Info()
                         .title("HireConnect — Application Service API")
                         .description("Manages job application lifecycle: submission, status tracking, and withdrawal.")

@@ -2,13 +2,18 @@ server:
   port: 8086
 
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
+      - optional:file:../.env[.properties]
+      - optional:file:../../.env[.properties]
   application:
     name:   NOTIFICATION-SERVICE
 
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/notification_db
     username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:Arif@123}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -24,7 +29,7 @@ spring:
     password: ${RABBITMQ_PASSWORD:guest}
     listener:
       simple:
-        acknowledge-mode: manual
+        acknowledge-mode: auto
         retry:
           enabled: true
           initial-interval: 1000
@@ -34,7 +39,7 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:noreply@hireconnect.com}
+    username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
     properties:
       mail:
@@ -64,8 +69,10 @@ app:
     routing-key:
       notification: notification.routing.key
   mail:
-    from: noreply@hireconnect.com
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
     from-name: HireConnect
+  services:
+    auth-url: ${AUTH_SERVICE_URL:http://localhost:8081/api/v1/auth}
 
 logging:
   level:
@@ -73,7 +80,7 @@ logging:
 
 springdoc:
   api-docs:
-    path: /v3/api-docs
+    path: /api-docs
   swagger-ui:
     path: /swagger-ui.html
     enabled: true

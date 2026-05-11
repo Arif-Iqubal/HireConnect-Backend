@@ -22,8 +22,9 @@ public class OpenApiConfig {
         final String securitySchemeName = "bearerAuth";
         return new OpenAPI()
         		
-        		.servers(List.of(
-                        new Server().url("/subscription")
+                .servers(List.of(
+                        new Server().url("http://localhost:8080").description("Via API Gateway"),
+                        new Server().url("http://localhost:8087").description("Local Subscription Service")
                 ))
                 .info(new Info()
                         .title("HireConnect — Subscription Service API")
